@@ -8,7 +8,7 @@ use super::{
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct WeakClassifier {
     feature: Feature,
-    threshold: i64,
+    pub threshold: i64,
     pos_polarity: bool,
 }
 impl WeakClassifier {

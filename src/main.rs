@@ -3,6 +3,7 @@ mod images;
 mod primitives;
 mod strong_classifier;
 mod weak_classifier;
+mod cascade;
 
 use std::{fs, path::Path};
 
@@ -13,6 +14,7 @@ pub use images::{draw_rectangle, ImageData, IntegralImage};
 pub use primitives::*;
 pub use strong_classifier::StrongClassifier;
 pub use weak_classifier::WeakClassifier;
+pub use cascade::Cascade;
 
 fn main() {
     // Parse the cli arguments using clap
@@ -66,8 +68,13 @@ fn cascade() {
     println!("{:-^30}", " Building Cascade ");
 
     // Build the cascade using the weak classifiers
-    let layout: Vec<usize> = vec![1, 5, 10, 50];
-    let cascade = cascade_from_layout(&layout, &mut wcs, &mut set);
+    let cascade = Cascade::from_false_pos(
+        &mut wcs,
+        &mut set,
+        MAX_FALSE_POS,
+        MIN_DETECT_RATE,
+        TARGET_FALSE_POS,
+    );
 
     // Output the data
     println!("Saving cascade to {}", CASCADE);
@@ -75,56 +82,12 @@ fn cascade() {
     fs::write(CASCADE, &data).expect("Unable to write to file");
 }
 
-fn cascade_from_layout(
-    layout: &Vec<usize>,
-    wcs: &mut Vec<WeakClassifier>,
-    set: &mut Vec<ImageData>,
-) -> Vec<StrongClassifier> {
-    // Build the cascade using the weak classifiers
-    let cascade_size = layout.len();
-    let mut cascade = Vec::<StrongClassifier>::with_capacity(cascade_size);
-    for (i, &size) in layout.iter().enumerate() {
-        println!("Building Strong Classifier {} of {}", i+1, cascade_size);
 
-        // Create a strong classifier
-        let sc = StrongClassifier::new(wcs, set, size);
-
-        // Remove the true negatives from the training set
-        set.retain(|data| data.is_object || sc.classify(&data.image, None));
-        cascade.push(sc);
-    }
-    cascade
-}
-
-// fn cascade_from_false_pos(
-//     target_rate: usize,
-//     wcs: &Vec<WeakClassifier>,
-//     set: &Vec<ImageData>,
-//     max_rate: usize,
-// ) -> Vec<StrongClassifier> {
-//     let f: f64 = 1.0;
-//     let mut i = 0;
-//     while f > TARGET_FALSE_POS {
-//         i++;
-//         let mut n_i = 0;
-//         let prev_f = f
-//         while f > (MAX_FALSE_POS * prev_f) {
-//             n_i++;
-//             // Create a strong classifier
-//             let sc = StrongClassifier::new(&mut wcs, &mut set, n_i);
-//             let f_i =;
-//             let d_i =;
-
-//         }
-//         // Remove the true negatives
-//         set.retain(|data| data.is_object || sc.classify(&data.image, None));
-//     }
-// }
 
 /// Test a cascade over training images
 fn test() {
     // Get the cached cascade
-    let cascade: Vec<StrongClassifier> = {
+    let cascade: Cascade = {
         if Path::new(CASCADE).exists() {
             let data = std::fs::read_to_string(CASCADE).unwrap();
             serde_json::from_str(&data).expect("Unable to read cached cascade")
@@ -148,20 +111,14 @@ fn test() {
     test_images(&train_set, &cascade);
 }
 
-fn test_images(set: &Vec<ImageData>, cascade: &Vec<StrongClassifier>) {
+fn test_images(set: &Vec<ImageData>, cascade: &Cascade) {
     // Test the cascade over training images
     println!("Testing the Cascade");
     let mut correct_objects: f64 = 0.0;
     let mut correct_others: f64 = 0.0;
     let mut num_objects: f64 = 0.0;
     for data in set {
-        let mut eval = true;
-        for sc in cascade {
-            if !sc.classify(&data.image, None) {
-                eval = false;
-                break;
-            }
-        }
+        let eval = cascade.classify(&data.image, None);
         if data.is_object {
             num_objects += 1.0;
         }
@@ -197,7 +154,7 @@ fn test_images(set: &Vec<ImageData>, cascade: &Vec<StrongClassifier>) {
 /// in size. This tests all rectangles in the images for the object
 fn detect(m: &clap::ArgMatches) {
     // Get the cached cascade
-    let cascade: Vec<StrongClassifier> = {
+    let cascade: Cascade = {
         if Path::new(CASCADE).exists() {
             let data = std::fs::read_to_string(CASCADE).unwrap();
             serde_json::from_str(&data).unwrap()
@@ -241,9 +198,7 @@ fn detect(m: &clap::ArgMatches) {
         for x in 0..(img_width - curr_width) {
             for y in 0..(img_height - curr_height) {
                 let r = Rectangle::<u32>::new(x, y, curr_width, curr_height);
-                if cascade.iter().all(|sc| sc.classify(&ii, Some((r, f)))) {
-                    objects.push(r);
-                }
+                if cascade.classify(&ii, Some((r, f))) { objects.push(r); }
             }
         }
     }
