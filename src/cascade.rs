@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     ImageData, IntegralImage, Rectangle, StrongClassifier, WeakClassifier,
-    CASCADE_BACKUP, STRONG_CLASSIFIER,
+    CASCADE_BACKUP, STRONG_CLASSIFIER, OrderedF64,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -66,7 +66,9 @@ impl Cascade {
                 .iter()
                 .map(|data| (data.is_object, cascade.classify(&data.image, None)));
             let num_neg = results.clone().filter(|(a, _)| !a).count() as f64;
-            results.filter(|(a, b)| !*a && *b).count() as f64 / num_neg
+            let tfp = results.filter(|(a, b)| !*a && *b).count() as f64 / num_neg;
+            println!("Current False Positive Rate (Cascade): {}", tfp);
+            tfp
         };
 
         // Calculates the detection rate and false positive rate
@@ -82,7 +84,9 @@ impl Cascade {
             let results = set
                 .iter()
                 .map(|data| (data.is_object, sc.classify(&data.image, None)));
-            results.filter(|(_, b)| *b).count() as f64 / set.iter().count() as f64
+            let fp = results.filter(|(_, b)| *b).count() as f64 / set.iter().count() as f64;
+            println!("Current False Positive Rate (Layer): {}", fp);
+            fp
         };
         while total_false_pos(&cascade, set) > target_false_pos {
             let mut sc = StrongClassifier::new();
@@ -96,13 +100,17 @@ impl Cascade {
                 // threshold of the current weak classifier
                 println!("Resetting Strong Classifier Threshold");
                 while detect_rate(&sc, set) < min_detect_rate {
-                    let mut wc = sc.wcs.last_mut().unwrap();
-                    if wc.pos_polarity {
-                        wc.threshold += 1;
-                    } else {
-                        wc.threshold -= 1;
-                    }
+                    let min_weight = *sc.weights.iter().min_by_key(|&w| OrderedF64(*w)).unwrap();
+                    
+                    // If the threshold is less than the minimum weight,
+                    // then decreasing it to any value other than 0 will have
+                    // no affect, so we go ahead and set it to 0
+                    if sc.threshold < min_weight { sc.threshold = 0.0 }
+                    else { sc.threshold -= sc.threshold / 300.0; }
                 }
+                println!("Current Detect Rate (Layer): {}", detect_rate(&sc, set));
+                println!("New Threshold: {}", sc.wcs.last().unwrap().pos_polarity);
+
                 // Save current strong classifier
                 let data = serde_json::to_string_pretty(&sc).unwrap();
                 std::fs::write(STRONG_CLASSIFIER, &data)

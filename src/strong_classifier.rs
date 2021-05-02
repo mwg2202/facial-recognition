@@ -6,8 +6,8 @@ use super::{ImageData, IntegralImage, Rectangle, WeakClassifier};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StrongClassifier {
     pub wcs: Vec<WeakClassifier>,
-    weights: Vec<f64>,
-    threshold: f64,
+    pub weights: Vec<f64>,
+    pub threshold: f64,
 }
 impl StrongClassifier {
     /// Creates an empty strong classifier
