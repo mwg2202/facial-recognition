@@ -8,7 +8,7 @@ pub const WH_32: u32 = WH as u32;
 
 // TRAINING DATA SIZE
 /// The number of negative training images to start with
-pub const NUM_NEG: usize = 10000;
+pub const NUM_NEG: usize = 15000;
 
 /// The number of positive training images to train over
 pub const NUM_POS: usize = 5000;

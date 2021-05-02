@@ -51,7 +51,7 @@ impl IntegralImage {
             let img = ImageReader::open(img.unwrap().path())
                 .unwrap()
                 .decode()
-                .unwrap()
+                .expect("Cannot decode image. (Check for Zone.Identifier)")
                 .into_luma8();
             let w = img.width();
             let h = img.height();
