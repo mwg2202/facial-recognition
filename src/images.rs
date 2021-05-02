@@ -4,11 +4,12 @@ use image::{
     imageops::{crop_imm, FilterType},
     io::Reader as ImageReader,
     ImageBuffer, Luma, Rgb, RgbImage,
+    DynamicImage,
 };
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 
-use super::{new_bar, Rectangle, Window, WH_32, WL_32};
+use super::{Rectangle, Window, WH_32, WL_32, Cascade};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct IntegralImage {
@@ -43,29 +44,6 @@ impl IntegralImage {
             width: w,
             height: h,
         }
-    }
-
-    pub fn from_slice_dir(slice_dir: &str) -> Vec<IntegralImage> {
-        let mut sliced = Vec::<IntegralImage>::new();
-        for img in fs::read_dir(slice_dir).unwrap() {
-            let img = ImageReader::open(img.unwrap().path())
-                .unwrap()
-                .decode()
-                .expect("Cannot decode image. (Check for Zone.Identifier)")
-                .into_luma8();
-            let w = img.width();
-            let h = img.height();
-
-            for x in 0..(w / WL_32) {
-                for y in 0..(h / WH_32) {
-                    let img = crop_imm(&img, x * WL_32, y * WL_32, WL_32, WH_32)
-                        .to_image();
-                    let image = IntegralImage::new(&img);
-                    sliced.push(image);
-                }
-            }
-        }
-        sliced
     }
 
     /// Gets the sum of pixels in a rectangular region of the original image
@@ -105,27 +83,26 @@ impl ImageData {
     pub fn from_dirs(
         object_dir: &str,
         other_dir: &str,
-        slice_dir: &str,
         num_pos: usize,
         num_neg: usize,
     ) -> Vec<ImageData> {
-        // Slice images
-        let sliced = IntegralImage::from_slice_dir(slice_dir);
-        let sliced_size = num_neg - fs::read_dir(other_dir).unwrap().count();
-        let sliced = sliced.choose_multiple(&mut rand::thread_rng(), sliced_size);
+        // Get the negative training images
+        let mut set = ImageData::from_other_dir(other_dir, num_neg, None);
 
-        // Find the number of objects and others
-        let num_objects = fs::read_dir(object_dir).unwrap().count();
+        // Get the positive training images
+        set.append(&mut ImageData::from_object_dir(object_dir, num_pos));
 
+        // Return the images
+        set
+    }
+
+    /// Gets the training images
+    pub fn from_object_dir(dir: &str, size: usize) -> Vec<ImageData>{
         // Create a vector to hold the image data
-        let mut set = Vec::<ImageData>::with_capacity(num_objects + num_neg);
-        let bar = new_bar(num_objects + num_neg, "Processing Images...");
-
-        // Calculate the weight of each object image
-        let weight = 1.0 / (2 * num_pos) as f64;
-
+        let mut set = Vec::<ImageData>::new();
+        
         // Add each image from the objects directory to the vector
-        for img in fs::read_dir(object_dir).unwrap() {
+        for img in fs::read_dir(dir).unwrap() {
             // Open the image
             let img = ImageReader::open(img.unwrap().path())
                 .unwrap()
@@ -139,6 +116,9 @@ impl ImageData {
 
             // Convert image to Integral Image
             let image = IntegralImage::new(&img);
+            
+            // Calculate the weight
+            let weight = 1.0 / (2 * size) as f64;
 
             // Push to vector
             set.push(ImageData {
@@ -146,51 +126,108 @@ impl ImageData {
                 weight,
                 is_object: true,
             });
-            bar.inc(1);
         }
-        let mut set: Vec<_> = set
-            .choose_multiple(&mut rand::thread_rng(), num_pos)
+        
+        let set: Vec<_> = set
+            .choose_multiple(&mut rand::thread_rng(), size)
             .cloned()
             .collect();
+        set
+    }
+    
+    /// Slices the images from the other directory and moves them to a vector
+    /// of integral images
+    pub fn from_other_dir(
+        dir: &str, 
+        size: usize, 
+        cascade: Option<&Cascade>
+    ) -> Vec<ImageData> {
+        // Create a vector to hold the image data
+        let mut set = Vec::<ImageData>::new();
 
-        // Calculate the weight of each object image
-        let weight = 1.0 / (2 * num_neg) as f64;
+        // Slice each image in the slice directory and add the slice to the vector
+        for img in fs::read_dir(dir).unwrap() {
 
-        // Add each image from the objects directory to the vector
-        for img in fs::read_dir(other_dir).unwrap() {
-            // Open the image
+            // Open the image and convert to greyscale
             let img = ImageReader::open(img.unwrap().path())
                 .unwrap()
                 .decode()
-                .unwrap();
-
-            // Resize the image and turn it to grayscale
-            let img = img
-                .resize_to_fill(WL_32, WH_32, FilterType::Triangle)
+                .expect("Cannot decode image. (Check for Zone.Identifier)")
                 .into_luma8();
+            
+            // Calculate the starting weight of each image
+            let weight = 1.0 / (2 * size) as f64;
+            
+            
+            // If a cascade was specified, make sure slices are false positives.
+            // If a cascade was specified, the slices are resized.
+            if let Some(ref cascade) = cascade {
 
-            // Convert image to Integral Image
-            let image = IntegralImage::new(&img);
+                // Get image size
+                let size = (img.width(), img.height());
+               
+                // Convert image to integral image
+                let ii = IntegralImage::new(&img);
 
-            // Push to vector
-            set.push(ImageData {
-                image,
-                weight,
-                is_object: false,
-            });
-            bar.inc(1);
+                // Obtain false positives in the image
+                cascade.detect(&ii, size).into_iter().for_each(|r| {
+                    
+                    // Get the image using the returned rectangle
+                    let img = crop_imm(
+                        &img, 
+                        r.top_left[0], 
+                        r.top_left[1], 
+                        r.bot_right[0] - r.top_left[0], 
+                        r.bot_right[1] - r.top_left[0],
+                    ).to_image();
+
+                    // Convert the image to the appropriate type
+                    let img = DynamicImage::ImageLuma8(img);
+
+                    // Resize the image
+                    let img = img.resize_to_fill(WL_32, WH_32, FilterType::Triangle);
+
+                    // Convert the image to an integral image
+                    let image = IntegralImage::new(img.as_luma8().unwrap());
+
+                    // Push the image onto the vector
+                    set.push(ImageData {
+                        image,
+                        weight,
+                        is_object: false,
+                    });
+                
+                });
+            } else {
+                // Get image height and width
+                let w = img.width();
+                let h = img.height();
+
+                // Get all possible slices of size WL by WH
+                for x in 0..(w / WL_32) {
+                    for y in 0..(h / WH_32) {
+                        
+                        // Crop image
+                        let img = crop_imm(&img, x, y, WL_32, WH_32)
+                            .to_image();
+
+                        // Convert image to integral image
+                        let image = IntegralImage::new(&img);
+
+                        // Push the image onto the vector
+                        set.push(ImageData {
+                            image,
+                            weight,
+                            is_object: false,
+                        });
+                    }
+                }
+            }
         }
-        for image in sliced.cloned() {
-            set.push(ImageData {
-                image,
-                weight,
-                is_object: false,
-            });
-            bar.inc(1);
-        }
-        bar.finish();
+        let set = set.choose_multiple(&mut rand::thread_rng(), size).cloned().collect();
         set
     }
+
 
     /// Normalize the weights of a set of image data
     pub fn normalize_weights(set: &mut [ImageData]) {

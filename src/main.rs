@@ -29,6 +29,7 @@ fn main() {
         ("cascade", Some(_)) => cascade(),
         ("test", Some(_)) => test(),
         ("detect", Some(m)) => detect(m),
+        ("continue", Some(_)) => continue_training(),
         _ => println!("Incorrect subcommand"),
     }
 }
@@ -36,9 +37,9 @@ fn main() {
 /// Processes images for use in building the cascade
 fn process_images() {
     // Find and process images
-    println!("Training Image:");
+    println!("Processing training images:");
     let set =
-        ImageData::from_dirs(OBJECT_DIR, OTHER_DIR, SLICE_DIR, NUM_POS, NUM_NEG);
+        ImageData::from_dirs(OBJECT_DIR, OTHER_DIR, NUM_POS, NUM_NEG);
     println!("Processed {} images.", set.len());
 
     // Save image data to cache
@@ -97,7 +98,7 @@ fn test() {
     };
 
     // Get processed training images from cache
-    let train_set: Vec<ImageData> = {
+    let set: Vec<ImageData> = {
         if Path::new(CACHED_IMAGES).exists() {
             let data = std::fs::read_to_string(CACHED_IMAGES).unwrap();
             serde_json::from_str(&data).expect("Unable to read cached image data")
@@ -107,16 +108,12 @@ fn test() {
         }
     };
 
-    test_images(&train_set, &cascade);
-}
-
-fn test_images(set: &Vec<ImageData>, cascade: &Cascade) {
     // Test the cascade over training images
     println!("Testing the Cascade");
     let mut correct_objects: f64 = 0.0;
     let mut correct_others: f64 = 0.0;
     let mut num_objects: f64 = 0.0;
-    for data in set {
+    for data in set.iter() {
         let eval = cascade.classify(&data.image, None);
         if data.is_object {
             num_objects += 1.0;
@@ -176,44 +173,73 @@ fn detect(m: &clap::ArgMatches) {
         .decode()
         .unwrap()
         .to_luma8();
-    let img_width = img.width();
-    let img_height = img.height();
+
+    // Get the size of the image
+    let size = (img.width(), img.height());
 
     // Convert image to integral image
     let ii = IntegralImage::new(&img);
 
-    // Vector to hold detected objects
-    let mut objects = Vec::<Rectangle<u32>>::new();
+    // Find all instances of the object in the image
+    let rects = cascade.detect(&ii, size);
 
-    let max_width = if (img_width / WL_32) < (img_height / WH_32) {
-        img_width
-    } else {
-        img_height * WL_32 / WH_32
-    };
-    let step_size = (f64::from(WL) / 5.0).round() as usize;
-    for curr_width in (WL_32..=max_width).step_by(step_size) {
-        let curr_height = curr_width * WH_32 / WL_32;
-        let f = f64::from(curr_width) / f64::from(WL_32);
-        for x in 0..(img_width - curr_width) {
-            for y in 0..(img_height - curr_height) {
-                let r = Rectangle::<u32>::new(x, y, curr_width, curr_height);
-                if cascade.classify(&ii, Some((r, f))) {
-                    objects.push(r);
-                }
-            }
-        }
-    }
-    println!("Found {} instances of object", objects.len());
-
-    // Reopen the image and conver to rgb, draw rectangles, and then save image
+    // Edit the original image to show the found instances 
     let mut img = ImageReader::open(path).unwrap().decode().unwrap().to_rgb8();
-    for o in objects.iter_mut() {
-        draw_rectangle(&mut img, o);
+    for r in rects.iter() {
+        draw_rectangle(&mut img, r);
     }
-    // draw_rectangle(&mut img, &objects[0]);
+
+    // Output the editied image
     img.save(output_img).unwrap();
 
-    // Output detected object
-    let data = serde_json::to_string_pretty(&objects).unwrap();
+    // Output the rectangles
+    let data = serde_json::to_string_pretty(&rects).unwrap();
     std::fs::write(DETECTION_OUTPUT, &data).expect("Unable to write to file");
+}
+pub fn continue_training() {
+    // Get the current cascade
+    let mut cascade: Cascade = {
+        if Path::new(CASCADE).exists() {
+            let data = std::fs::read_to_string(CASCADE).unwrap();
+            serde_json::from_str(&data).unwrap()
+        } else {
+            println!("Cascade not found in cache");
+            return;
+        }
+    };
+    
+    // Get processed training images from cache
+    let mut set: Vec<ImageData> = {
+        if Path::new(CACHED_IMAGES).exists() {
+            let data = std::fs::read_to_string(CACHED_IMAGES).unwrap();
+            serde_json::from_str(&data).expect("Unable to read cached image data")
+        } else {
+            println!("Testing image data not found in cache");
+            return;
+        }
+    };
+
+    // Keep the positive training samples
+    set.retain(|data| data.is_object);
+
+    // Recalculate the negative training samples
+    set.append(
+        &mut ImageData::from_other_dir(
+            OTHER_DIR, 
+            NUM_NEG, 
+            Some(&cascade)
+        )
+    );
+   
+    // Get all possible weak classifiers
+    let mut wcs = WeakClassifier::get_all();
+    
+    // Train the cascade
+    cascade.train(
+        &mut wcs,
+        &mut set,
+        MAX_FALSE_POS,
+        MIN_DETECT_RATE,
+        TARGET_FALSE_POS,
+    );
 }

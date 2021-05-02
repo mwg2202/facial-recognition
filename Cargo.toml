@@ -1,5 +1,5 @@
 [package]
-name = "face-recognition"
+name = "object-detection"
 version = "0.1.0"
 authors = ["mwg2202 <mwg2202@yahoo.com>"]
 edition = "2018"

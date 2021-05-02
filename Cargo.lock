@@ -176,20 +176,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
-name = "face-recognition"
-version = "0.1.0"
-dependencies = [
- "clap",
- "image",
- "indicatif",
- "num",
- "rand",
- "rayon",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -407,6 +393,20 @@ name = "number_prefix"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
+
+[[package]]
+name = "object-detection"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "image",
+ "indicatif",
+ "num",
+ "rand",
+ "rayon",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "png"

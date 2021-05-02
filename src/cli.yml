@@ -13,6 +13,9 @@ subcommands:
     - test: 
         about: >
             Tests the cascade created from the \"cascade\" subcommand.
+    - continue:
+        about: >
+            Continues training the cascade
     - detect: 
         about: >
             Detects all the faces in a given image.

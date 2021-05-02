@@ -8,10 +8,13 @@ pub const WH_32: u32 = WH as u32;
 
 // TRAINING DATA SIZE
 /// The number of negative training images to start with
-pub const NUM_NEG: usize = 15000;
+pub const NUM_NEG: usize = 10000;
 
 /// The number of positive training images to train over
 pub const NUM_POS: usize = 5000;
+
+/// The minimum number of negative training images to be used
+pub const MIN_NUM_NEG: usize = 8000;
 
 // CONSTANTS HOLDING PATHS/DIRECTORIES
 /// Path to images of the object
@@ -19,9 +22,6 @@ pub const OBJECT_DIR: &str = "images/training/object";
 
 /// Path to images that are not of object
 pub const OTHER_DIR: &str = "images/training/other";
-
-/// Path to images not containing object to slice
-pub const SLICE_DIR: &str = "images/training/to_slice";
 
 /// Path to cached training images
 pub const CACHED_IMAGES: &str = "cache/images.json";
@@ -47,10 +47,10 @@ pub const CASCADE_SIZE: usize = 4;
 pub const MAX_FALSE_POS: f64 = 0.4;
 
 /// The minimum detection rate for each layer of the cascade
-pub const MIN_DETECT_RATE: f64 = 0.99;
+pub const MIN_DETECT_RATE: f64 = 0.9;
 
 /// Target overall false positive rate for the cascade
-pub const TARGET_FALSE_POS: f64 = 0.005;
+pub const TARGET_FALSE_POS: f64 = 5e-6;
 
 // In order to find the maximum number of layers that the cascade can have after
 // being built using a target false positive rate, by evaluating the log base
