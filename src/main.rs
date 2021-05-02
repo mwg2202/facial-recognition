@@ -1,12 +1,13 @@
+mod cascade;
 mod constants;
 mod images;
 mod primitives;
 mod strong_classifier;
 mod weak_classifier;
-mod cascade;
 
-use std::{fs, path::Path};
+use std::path::Path;
 
+pub use cascade::Cascade;
 use clap::{load_yaml, App, AppSettings};
 pub use constants::*;
 use image::io::Reader as ImageReader;
@@ -14,7 +15,6 @@ pub use images::{draw_rectangle, ImageData, IntegralImage};
 pub use primitives::*;
 pub use strong_classifier::StrongClassifier;
 pub use weak_classifier::WeakClassifier;
-pub use cascade::Cascade;
 
 fn main() {
     // Parse the cli arguments using clap
@@ -37,12 +37,13 @@ fn main() {
 fn process_images() {
     // Find and process images
     println!("Training Image:");
-    let set = ImageData::from_dirs(OBJECT_DIR, OTHER_DIR, SLICE_DIR, NUM_NEG);
+    let set =
+        ImageData::from_dirs(OBJECT_DIR, OTHER_DIR, SLICE_DIR, NUM_POS, NUM_NEG);
     println!("Processed {} images.", set.len());
 
     // Save image data to cache
     let data = serde_json::to_string(&set).unwrap();
-    fs::write(CACHED_IMAGES, &data).expect("Unable to cache images");
+    std::fs::write(CACHED_IMAGES, &data).expect("Unable to cache images");
 }
 
 /// Builds the cascade
@@ -79,10 +80,8 @@ fn cascade() {
     // Output the data
     println!("Saving cascade to {}", CASCADE);
     let data = serde_json::to_string_pretty(&cascade).unwrap();
-    fs::write(CASCADE, &data).expect("Unable to write to file");
+    std::fs::write(CASCADE, &data).expect("Unable to write to file");
 }
-
-
 
 /// Test a cascade over training images
 fn test() {
@@ -107,7 +106,7 @@ fn test() {
             return;
         }
     };
-    
+
     test_images(&train_set, &cascade);
 }
 
@@ -198,7 +197,9 @@ fn detect(m: &clap::ArgMatches) {
         for x in 0..(img_width - curr_width) {
             for y in 0..(img_height - curr_height) {
                 let r = Rectangle::<u32>::new(x, y, curr_width, curr_height);
-                if cascade.classify(&ii, Some((r, f))) { objects.push(r); }
+                if cascade.classify(&ii, Some((r, f))) {
+                    objects.push(r);
+                }
             }
         }
     }
@@ -214,5 +215,5 @@ fn detect(m: &clap::ArgMatches) {
 
     // Output detected object
     let data = serde_json::to_string_pretty(&objects).unwrap();
-    fs::write("output/object.json", &data).expect("Unable to write to file");
+    std::fs::write(DETECTION_OUTPUT, &data).expect("Unable to write to file");
 }

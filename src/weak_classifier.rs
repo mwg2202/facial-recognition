@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+
 use super::{
     new_bar, Feature, ImageData, IntegralImage, OrderedF64, Rectangle, Window, WH,
     WL,
@@ -9,7 +10,7 @@ use super::{
 pub struct WeakClassifier {
     feature: Feature,
     pub threshold: i64,
-    pos_polarity: bool,
+    pub pos_polarity: bool,
 }
 impl WeakClassifier {
     pub fn new(feature: Feature) -> WeakClassifier {
@@ -34,12 +35,7 @@ impl WeakClassifier {
     }
 
     /// Calculates the optimal threshold and polarity for the weak classifier
-    pub fn calculate_threshold(
-        &mut self,
-        set: &[ImageData],
-        afs: f64,
-        abg: f64,
-    ) {
+    pub fn calculate_threshold(&mut self, set: &[ImageData], afs: f64, abg: f64) {
         // Sort the training images based on it's evaluation
         let mut sorted: Vec<_> = set.iter().collect();
         sorted.sort_unstable_by(|a: &&ImageData, b: &&ImageData| {
@@ -82,7 +78,7 @@ impl WeakClassifier {
 
     /// Calculate the optimal thresholds for a slice of weak classifiers.
     /// Calls calculate_threshold() on multiple threads
-    pub fn calculate_thresholds(wcs: &mut[WeakClassifier], set: &[ImageData]) {
+    pub fn calculate_thresholds(wcs: &mut [WeakClassifier], set: &[ImageData]) {
         // Calculate the optimal thresholds for all weak classifiers
         let afs = set
             .iter()
@@ -190,7 +186,7 @@ impl WeakClassifier {
 
     // Updates the weights of the images based off of the error of the
     // self over the images
-    pub fn update_weights(&self, set: &mut[ImageData]) -> f64 {
+    pub fn update_weights(&self, set: &mut [ImageData]) -> f64 {
         let err = self.error(set);
         let beta_t = err / (1.0 - err);
 

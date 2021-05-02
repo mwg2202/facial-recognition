@@ -1,11 +1,13 @@
 use std::fs;
-use rand::seq::SliceRandom;
+
 use image::{
     imageops::{crop_imm, FilterType},
     io::Reader as ImageReader,
     ImageBuffer, Luma, Rgb, RgbImage,
 };
+use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
+
 use super::{new_bar, Rectangle, Window, WH_32, WL_32};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -42,7 +44,7 @@ impl IntegralImage {
             height: h,
         }
     }
-    
+
     pub fn from_slice_dir(slice_dir: &str) -> Vec<IntegralImage> {
         let mut sliced = Vec::<IntegralImage>::new();
         for img in fs::read_dir(slice_dir).unwrap() {
@@ -99,17 +101,17 @@ pub struct ImageData {
     pub is_object: bool,
 }
 impl ImageData {
-
     /// Create image data from a directories
     pub fn from_dirs(
-        object_dir: &str, 
-        other_dir: &str, 
+        object_dir: &str,
+        other_dir: &str,
         slice_dir: &str,
+        num_pos: usize,
         num_neg: usize,
     ) -> Vec<ImageData> {
         // Slice images
         let sliced = IntegralImage::from_slice_dir(slice_dir);
-        let sliced_size = num_neg - fs::read_dir(other_dir).unwrap().count(); 
+        let sliced_size = num_neg - fs::read_dir(other_dir).unwrap().count();
         let sliced = sliced.choose_multiple(&mut rand::thread_rng(), sliced_size);
 
         // Find the number of objects and others
@@ -120,7 +122,7 @@ impl ImageData {
         let bar = new_bar(num_objects + num_neg, "Processing Images...");
 
         // Calculate the weight of each object image
-        let weight = 1.0 / (2 * num_objects) as f64;
+        let weight = 1.0 / (2 * num_pos) as f64;
 
         // Add each image from the objects directory to the vector
         for img in fs::read_dir(object_dir).unwrap() {
@@ -146,6 +148,10 @@ impl ImageData {
             });
             bar.inc(1);
         }
+        let mut set: Vec<_> = set
+            .choose_multiple(&mut rand::thread_rng(), num_pos)
+            .cloned()
+            .collect();
 
         // Calculate the weight of each object image
         let weight = 1.0 / (2 * num_neg) as f64;
@@ -178,7 +184,7 @@ impl ImageData {
             set.push(ImageData {
                 image,
                 weight,
-                is_object: false
+                is_object: false,
             });
             bar.inc(1);
         }

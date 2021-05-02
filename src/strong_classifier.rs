@@ -7,6 +7,7 @@ use super::{ImageData, IntegralImage, Rectangle, WeakClassifier};
 pub struct StrongClassifier {
     pub wcs: Vec<WeakClassifier>,
     weights: Vec<f64>,
+    threshold: f64,
 }
 impl StrongClassifier {
     /// Creates an empty strong classifier
@@ -14,11 +15,16 @@ impl StrongClassifier {
         // Build and return the strong classifier
         let wcs = Vec::<WeakClassifier>::new();
         let weights = Vec::<f64>::new();
-        StrongClassifier { wcs, weights}
+        let threshold = 0.0;
+        StrongClassifier {
+            wcs,
+            weights,
+            threshold,
+        }
     }
 
     /// Creates a weak classifier which is then pushed onto self
-    pub fn push(&mut self, wcs: &mut[WeakClassifier], set: &mut[ImageData]) {
+    pub fn push(&mut self, wcs: &mut [WeakClassifier], set: &mut [ImageData]) {
         // Normalize weights
         ImageData::normalize_weights(set);
 
@@ -30,10 +36,15 @@ impl StrongClassifier {
 
         // Update the weights
         let weight = wc.update_weights(set);
-        self.wcs.push(wc); self.weights.push(weight);
+        self.wcs.push(wc);
+        self.weights.push(weight);
+
+        // Find the threshold of the strong classifier
+        self.threshold = self.weights.iter().sum::<f64>() / 2.0;
     }
 
-    /// Classifies a rectangular portion of an integral image as being a face or not
+    /// Classifies a rectangular portion of an integral image as being a face or
+    /// not
     pub fn classify(
         &self,
         ii: &IntegralImage,
@@ -45,6 +56,6 @@ impl StrongClassifier {
             .filter(|(wc, _)| wc.classify(ii, w))
             .map(|(_, weight)| weight)
             .sum::<f64>()
-            >= self.weights.iter().sum::<f64>() / 2.0
+            >= self.threshold
     }
 }
