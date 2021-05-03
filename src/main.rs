@@ -38,8 +38,7 @@ fn main() {
 fn process_images() {
     // Find and process images
     println!("Processing training images:");
-    let set =
-        ImageData::from_dirs(OBJECT_DIR, OTHER_DIR, NUM_POS, NUM_NEG);
+    let set = ImageData::from_dirs(None);
     println!("Processed {} images.", set.len());
 
     // Save image data to cache
@@ -50,7 +49,7 @@ fn process_images() {
 /// Builds the cascade
 fn cascade() {
     // Get training images from cache or process raw images if cache is empty
-    let mut set: Vec<ImageData> = {
+    let set: Vec<ImageData> = {
         if Path::new(CACHED_IMAGES).exists() {
             let data = std::fs::read_to_string(CACHED_IMAGES).unwrap();
             serde_json::from_str(&data).expect("Unable to read cached images")
@@ -70,13 +69,7 @@ fn cascade() {
     println!("{:-^30}", " Building Cascade ");
 
     // Build the cascade using the weak classifiers
-    let cascade = Cascade::from_false_pos(
-        &mut wcs,
-        &mut set,
-        MAX_FALSE_POS,
-        MIN_DETECT_RATE,
-        TARGET_FALSE_POS,
-    );
+    let cascade = Cascade::from_false_pos(&mut wcs, set);
 
     // Output the data
     println!("Saving cascade to {}", CASCADE);
@@ -183,7 +176,7 @@ fn detect(m: &clap::ArgMatches) {
     // Find all instances of the object in the image
     let rects = cascade.detect(&ii, size);
 
-    // Edit the original image to show the found instances 
+    // Edit the original image to show the found instances
     let mut img = ImageReader::open(path).unwrap().decode().unwrap().to_rgb8();
     for r in rects.iter() {
         draw_rectangle(&mut img, r);
@@ -207,7 +200,7 @@ pub fn continue_training() {
             return;
         }
     };
-    
+
     // Get processed training images from cache
     let mut set: Vec<ImageData> = {
         if Path::new(CACHED_IMAGES).exists() {
@@ -223,23 +216,11 @@ pub fn continue_training() {
     set.retain(|data| data.is_object);
 
     // Recalculate the negative training samples
-    set.append(
-        &mut ImageData::from_other_dir(
-            OTHER_DIR, 
-            NUM_NEG, 
-            Some(&cascade)
-        )
-    );
-   
+    set.append(&mut ImageData::from_other_dir(Some(&cascade)));
+
     // Get all possible weak classifiers
     let mut wcs = WeakClassifier::get_all();
-    
+
     // Train the cascade
-    cascade.train(
-        &mut wcs,
-        &mut set,
-        MAX_FALSE_POS,
-        MIN_DETECT_RATE,
-        TARGET_FALSE_POS,
-    );
+    cascade.train(&mut wcs, set);
 }

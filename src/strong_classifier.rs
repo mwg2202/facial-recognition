@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{ImageData, IntegralImage, Rectangle, WeakClassifier};
+use super::*;
 
 /// A strong classifier (made up of weighted weak classifiers)
 #[derive(Debug, Serialize, Deserialize)]

@@ -4,7 +4,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use num::{ToPrimitive, Unsigned};
 use serde::{Deserialize, Serialize};
 
-use super::{IntegralImage, WindowSize};
+use crate::*;
 
 /// The smallest unsigned integer primitive that can index into the Window
 pub type Window = Rectangle<WindowSize>;

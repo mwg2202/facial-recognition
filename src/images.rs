@@ -8,7 +8,7 @@ use image::{
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 
-use super::{Rectangle, Window, WH_32, WL_32, Cascade};
+use super::*;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct IntegralImage {
@@ -79,29 +79,24 @@ pub struct ImageData {
 }
 impl ImageData {
     /// Create image data from a directories
-    pub fn from_dirs(
-        object_dir: &str,
-        other_dir: &str,
-        num_pos: usize,
-        num_neg: usize,
-    ) -> Vec<ImageData> {
+    pub fn from_dirs(cascade: Option<&Cascade>) -> Vec<ImageData> {
         // Get the negative training images
-        let mut set = ImageData::from_other_dir(other_dir, num_neg, None);
+        let mut set = ImageData::from_other_dir(cascade);
 
         // Get the positive training images
-        set.append(&mut ImageData::from_object_dir(object_dir, num_pos));
+        set.append(&mut ImageData::from_object_dir());
 
         // Return the images
         set
     }
 
     /// Gets the training images
-    pub fn from_object_dir(dir: &str, size: usize) -> Vec<ImageData>{
+    pub fn from_object_dir() -> Vec<ImageData> {
         // Create a vector to hold the image data
         let mut set = Vec::<ImageData>::new();
-        
+
         // Add each image from the objects directory to the vector
-        for img in fs::read_dir(dir).unwrap() {
+        for img in fs::read_dir(OBJECT_DIR).unwrap() {
             // Open the image
             let img = ImageReader::open(img.unwrap().path())
                 .unwrap()
@@ -115,9 +110,9 @@ impl ImageData {
 
             // Convert image to Integral Image
             let image = IntegralImage::new(&img);
-            
+
             // Calculate the weight
-            let weight = 1.0 / (2 * size) as f64;
+            let weight = 1.0 / (2 * NUM_POS) as f64;
 
             // Push to vector
             set.push(ImageData {
@@ -126,38 +121,32 @@ impl ImageData {
                 is_object: true,
             });
         }
-        
+
         let set: Vec<_> = set
-            .choose_multiple(&mut rand::thread_rng(), size)
+            .choose_multiple(&mut rand::thread_rng(), NUM_POS)
             .cloned()
             .collect();
         set
     }
-    
+
     /// Slices the images from the other directory and moves them to a vector
     /// of integral images
-    pub fn from_other_dir(
-        dir: &str, 
-        size: usize, 
-        cascade: Option<&Cascade>
-    ) -> Vec<ImageData> {
+    pub fn from_other_dir(cascade: Option<&Cascade>) -> Vec<ImageData> {
         // Create a vector to hold the image data
         let mut set = Vec::<ImageData>::new();
 
         // Slice each image in the slice directory and add the slice to the vector
-        for img in fs::read_dir(dir).unwrap() {
-
+        for img in fs::read_dir(OTHER_DIR).unwrap() {
             // Open the image and convert to greyscale
             let img = ImageReader::open(img.unwrap().path())
                 .unwrap()
                 .decode()
                 .expect("Cannot decode image. (Check for Zone.Identifier)")
                 .into_luma8();
-            
+
             // Calculate the starting weight of each image
-            let weight = 1.0 / (2 * size) as f64;
-            
-            
+            let weight = 1.0 / (2 * NUM_NEG) as f64;
+
             // Get image height and width
             let w = img.width();
             let h = img.height();
@@ -165,10 +154,8 @@ impl ImageData {
             // Get all possible slices of size WL by WH
             for x in 0..(w / WL_32) {
                 for y in 0..(h / WH_32) {
-                    
                     // Crop image
-                    let img = crop_imm(&img, x, y, WL_32, WH_32)
-                        .to_image();
+                    let img = crop_imm(&img, x, y, WL_32, WH_32).to_image();
 
                     // Convert image to integral image
                     let image = IntegralImage::new(&img);
@@ -193,12 +180,11 @@ impl ImageData {
             }
         }
         let set: Vec<_> = set
-            .choose_multiple(&mut rand::thread_rng(), size)
+            .choose_multiple(&mut rand::thread_rng(), NUM_NEG)
             .cloned()
             .collect();
         set
     }
-
 
     /// Normalize the weights of a set of image data
     pub fn normalize_weights(set: &mut [ImageData]) {

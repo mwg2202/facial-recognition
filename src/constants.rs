@@ -9,13 +9,10 @@ pub const STEP_SIZE: usize = 5;
 
 // TRAINING DATA SIZE
 /// The number of negative training images to start with
-pub const NUM_NEG: usize = 8000;
+pub const NUM_NEG: usize = 5000;
 
 /// The number of positive training images to train over
-pub const NUM_POS: usize = 3000;
-
-/// The minimum number of negative training images to be used
-pub const MIN_NUM_NEG: usize = 4000;
+pub const NUM_POS: usize = 5000;
 
 // CONSTANTS HOLDING PATHS/DIRECTORIES
 /// Path to images of the object
@@ -40,9 +37,8 @@ pub const STRONG_CLASSIFIER: &str = "cache/strong_classifier.json";
 pub const DETECTION_OUTPUT: &str = "output/object.json";
 
 // CONSTANTS USED IN BUILDING THE CASCADE
-/// The number of strong classifiers in the cascade (used when building from
-/// layout)
-pub const CASCADE_SIZE: usize = 4;
+/// The number of strong classifiers in the cascade
+pub const CASCADE_SIZE: usize = 10;
 
 /// Maximum acceptable false positive rate per layer
 pub const MAX_FALSE_POS: f64 = 0.4;
@@ -50,14 +46,9 @@ pub const MAX_FALSE_POS: f64 = 0.4;
 /// The minimum detection rate for each layer of the cascade
 pub const MIN_DETECT_RATE: f64 = 0.95;
 
-/// Target overall false positive rate for the cascade
-pub const TARGET_FALSE_POS: f64 = 5e-6;
-
-// In order to find the maximum number of layers that the cascade can have after
-// being built using a target false positive rate, by evaluating the log base
-// MIN_FALSE_POS of TARGET_FALSE_POS.
+// The maximum fianl false positive positive rate is given MAX_FALSE_POS raised
+// to CASCADE_SIZE
 // The minimum detection rate of the built cascade is given by evaluating
-// MIN_DETECTION_RATE raised to the size of the cascade found in the previous
-// calculation.
+// MIN_DETECTION_RATE raised to CASCADE_SIZE
 // The minimum true positive rate is then given by subtracting the maximum false
 // positive rate from the minimum detection rate of the cascade.
