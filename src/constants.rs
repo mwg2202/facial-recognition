@@ -5,16 +5,17 @@ pub const WL: WindowSize = WS;
 pub const WH: WindowSize = WS;
 pub const WL_32: u32 = WL as u32;
 pub const WH_32: u32 = WH as u32;
+pub const STEP_SIZE: usize = 5;
 
 // TRAINING DATA SIZE
 /// The number of negative training images to start with
-pub const NUM_NEG: usize = 10000;
+pub const NUM_NEG: usize = 8000;
 
 /// The number of positive training images to train over
-pub const NUM_POS: usize = 5000;
+pub const NUM_POS: usize = 3000;
 
 /// The minimum number of negative training images to be used
-pub const MIN_NUM_NEG: usize = 8000;
+pub const MIN_NUM_NEG: usize = 4000;
 
 // CONSTANTS HOLDING PATHS/DIRECTORIES
 /// Path to images of the object
@@ -47,7 +48,7 @@ pub const CASCADE_SIZE: usize = 4;
 pub const MAX_FALSE_POS: f64 = 0.4;
 
 /// The minimum detection rate for each layer of the cascade
-pub const MIN_DETECT_RATE: f64 = 0.9;
+pub const MIN_DETECT_RATE: f64 = 0.95;
 
 /// Target overall false positive rate for the cascade
 pub const TARGET_FALSE_POS: f64 = 5e-6;

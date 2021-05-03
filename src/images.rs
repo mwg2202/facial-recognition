@@ -4,7 +4,6 @@ use image::{
     imageops::{crop_imm, FilterType},
     io::Reader as ImageReader,
     ImageBuffer, Luma, Rgb, RgbImage,
-    DynamicImage,
 };
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
@@ -159,62 +158,31 @@ impl ImageData {
             let weight = 1.0 / (2 * size) as f64;
             
             
-            // If a cascade was specified, make sure slices are false positives.
-            // If a cascade was specified, the slices are resized.
-            if let Some(ref cascade) = cascade {
+            // Get image height and width
+            let w = img.width();
+            let h = img.height();
 
-                // Get image size
-                let size = (img.width(), img.height());
-               
-                // Convert image to integral image
-                let ii = IntegralImage::new(&img);
-
-                // Obtain false positives in the image
-                cascade.detect(&ii, size).into_iter().for_each(|r| {
+            // Get all possible slices of size WL by WH
+            for x in 0..(w / WL_32) {
+                for y in 0..(h / WH_32) {
                     
-                    // Get the image using the returned rectangle
-                    let img = crop_imm(
-                        &img, 
-                        r.top_left[0], 
-                        r.top_left[1], 
-                        r.bot_right[0] - r.top_left[0], 
-                        r.bot_right[1] - r.top_left[0],
-                    ).to_image();
+                    // Crop image
+                    let img = crop_imm(&img, x, y, WL_32, WH_32)
+                        .to_image();
 
-                    // Convert the image to the appropriate type
-                    let img = DynamicImage::ImageLuma8(img);
-
-                    // Resize the image
-                    let img = img.resize_to_fill(WL_32, WH_32, FilterType::Triangle);
-
-                    // Convert the image to an integral image
-                    let image = IntegralImage::new(img.as_luma8().unwrap());
+                    // Convert image to integral image
+                    let image = IntegralImage::new(&img);
 
                     // Push the image onto the vector
-                    set.push(ImageData {
-                        image,
-                        weight,
-                        is_object: false,
-                    });
-                
-                });
-            } else {
-                // Get image height and width
-                let w = img.width();
-                let h = img.height();
-
-                // Get all possible slices of size WL by WH
-                for x in 0..(w / WL_32) {
-                    for y in 0..(h / WH_32) {
-                        
-                        // Crop image
-                        let img = crop_imm(&img, x, y, WL_32, WH_32)
-                            .to_image();
-
-                        // Convert image to integral image
-                        let image = IntegralImage::new(&img);
-
-                        // Push the image onto the vector
+                    if let Some(ref cascade) = cascade {
+                        if cascade.classify(&image, None) {
+                            set.push(ImageData {
+                                image,
+                                weight,
+                                is_object: false,
+                            });
+                        }
+                    } else {
                         set.push(ImageData {
                             image,
                             weight,
@@ -224,7 +192,10 @@ impl ImageData {
                 }
             }
         }
-        let set = set.choose_multiple(&mut rand::thread_rng(), size).cloned().collect();
+        let set: Vec<_> = set
+            .choose_multiple(&mut rand::thread_rng(), size)
+            .cloned()
+            .collect();
         set
     }
 

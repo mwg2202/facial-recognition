@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     ImageData, IntegralImage, Rectangle, StrongClassifier, WeakClassifier,
-    CASCADE_BACKUP, STRONG_CLASSIFIER, OrderedF64, WL_32, WH_32, WL,
-    MIN_NUM_NEG, OTHER_DIR, NUM_NEG
+    CASCADE_BACKUP, STRONG_CLASSIFIER, OrderedF64, WL_32, WH_32,
+    MIN_NUM_NEG, OTHER_DIR, NUM_NEG, STEP_SIZE
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -152,10 +152,10 @@ impl Cascade {
 
             if curr_set.iter().filter(|data| !data.is_object).count() < MIN_NUM_NEG {
                 // Keep the positive training samples
-                set.retain(|data| data.is_object);
+                curr_set.retain(|data| data.is_object);
 
                 // Recalculate the negative training samples
-                set.append(
+                curr_set.append(
                     &mut ImageData::from_other_dir(
                         OTHER_DIR, 
                         NUM_NEG, 
@@ -192,8 +192,7 @@ impl Cascade {
         };
 
         // Search the image for the object
-        let step_size = (f64::from(WL) / 5.0).round() as usize;
-        for w in (WL_32..= max_w).step_by(step_size) {
+        for w in (WL_32..= max_w).step_by(STEP_SIZE) {
             let h = w * WH_32 / WL_32;
             let f = f64::from(w) / f64::from(WL_32);
             for x in 0..(size.0 - w) {
