@@ -1,3 +1,5 @@
+#![warn(clippy::all, clippy::cargo, clippy::nursery)]
+
 mod cascade;
 mod constants;
 mod images;
@@ -106,7 +108,7 @@ fn test() {
     let mut correct_objects: f64 = 0.0;
     let mut correct_others: f64 = 0.0;
     let mut num_objects: f64 = 0.0;
-    for data in set.iter() {
+    for data in &set {
         let eval = cascade.classify(&data.image, None);
         if data.is_object {
             num_objects += 1.0;
@@ -178,7 +180,7 @@ fn detect(m: &clap::ArgMatches) {
 
     // Edit the original image to show the found instances
     let mut img = ImageReader::open(path).unwrap().decode().unwrap().to_rgb8();
-    for r in rects.iter() {
+    for r in &rects {
         draw_rectangle(&mut img, r);
     }
 

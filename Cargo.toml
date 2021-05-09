@@ -1,10 +1,13 @@
 [package]
 name = "object-detection"
+description = "An implementation of the viola-jones object detection algorithm"
 version = "0.1.0"
 authors = ["mwg2202 <mwg2202@yahoo.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+repository = "https://github.com/mwg2202/object-detection"
+license = "MIT"
+keywords = ["object", "detection", "viola-jones", "ai"]
+categories = ["computer-vision"]
 
 [dependencies]
 serde = {version = "1.0", features = ["derive"]}

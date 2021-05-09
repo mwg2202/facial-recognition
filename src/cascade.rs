@@ -5,22 +5,19 @@ use crate::*;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Cascade(Vec<StrongClassifier>);
 impl Cascade {
-    fn new() -> Cascade { Cascade(Vec::<StrongClassifier>::new()) }
+    const fn new() -> Self { Self(Vec::<StrongClassifier>::new()) }
 
     pub fn classify(
         &self,
         ii: &IntegralImage,
         r: Option<(Rectangle<u32>, f64)>,
     ) -> bool {
-        self.0.iter().all(|sc| sc.classify(&ii, r))
+        self.0.iter().all(|sc| sc.classify(ii, r))
     }
 
-    pub fn from_false_pos(
-        wcs: &mut [WeakClassifier],
-        set: Vec<ImageData>,
-    ) -> Cascade {
+    pub fn from_false_pos(wcs: &mut [WeakClassifier], set: Vec<ImageData>) -> Self {
         // Create an empty cascade
-        let mut cascade = Cascade::new();
+        let mut cascade = Self::new();
         cascade.train(wcs, set);
         cascade
     }

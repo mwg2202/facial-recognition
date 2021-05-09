@@ -11,12 +11,12 @@ pub struct StrongClassifier {
 }
 impl StrongClassifier {
     /// Creates an empty strong classifier
-    pub fn new() -> StrongClassifier {
+    pub const fn new() -> Self {
         // Build and return the strong classifier
         let wcs = Vec::<WeakClassifier>::new();
         let weights = Vec::<f64>::new();
         let threshold = 0.0;
-        StrongClassifier {
+        Self {
             wcs,
             weights,
             threshold,
@@ -58,4 +58,7 @@ impl StrongClassifier {
             .sum::<f64>()
             >= self.threshold
     }
+}
+impl Default for StrongClassifier {
+    fn default() -> Self { Self::new() }
 }

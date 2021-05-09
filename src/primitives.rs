@@ -15,8 +15,8 @@ pub struct Rectangle<T: Unsigned + Copy> {
     pub bot_right: [T; 2],
 }
 impl<T: Unsigned + Copy> Rectangle<T> {
-    pub fn new(x: T, y: T, w: T, h: T) -> Rectangle<T> {
-        Rectangle::<T> {
+    pub fn new(x: T, y: T, w: T, h: T) -> Self {
+        Self {
             top_left: [x, y],
             bot_right: [x + w, y + h],
         }
@@ -45,6 +45,7 @@ impl Feature {
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub struct OrderedF64(pub f64);
 impl Eq for OrderedF64 {}
+#[allow(clippy::derive_ord_xor_partial_ord)]
 impl Ord for OrderedF64 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap_or(Ordering::Equal)

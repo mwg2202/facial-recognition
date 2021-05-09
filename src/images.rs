@@ -18,7 +18,7 @@ pub struct IntegralImage {
 }
 impl IntegralImage {
     /// Creates an integral image from an image
-    pub fn new(img: &ImageBuffer<Luma<u8>, Vec<u8>>) -> IntegralImage {
+    pub fn new(img: &ImageBuffer<Luma<u8>, Vec<u8>>) -> Self {
         // Calculate each pixel of the integral image
         let w = img.width() as usize;
         let h = img.height() as usize;
@@ -38,7 +38,7 @@ impl IntegralImage {
                 pixels.push(pixel);
             }
         }
-        IntegralImage {
+        Self {
             pixels,
             width: w,
             height: h,
@@ -79,21 +79,21 @@ pub struct ImageData {
 }
 impl ImageData {
     /// Create image data from a directories
-    pub fn from_dirs(cascade: Option<&Cascade>) -> Vec<ImageData> {
+    pub fn from_dirs(cascade: Option<&Cascade>) -> Vec<Self> {
         // Get the negative training images
-        let mut set = ImageData::from_other_dir(cascade);
+        let mut set = Self::from_other_dir(cascade);
 
         // Get the positive training images
-        set.append(&mut ImageData::from_object_dir());
+        set.append(&mut Self::from_object_dir());
 
         // Return the images
         set
     }
 
     /// Gets the training images
-    pub fn from_object_dir() -> Vec<ImageData> {
+    pub fn from_object_dir() -> Vec<Self> {
         // Create a vector to hold the image data
-        let mut set = Vec::<ImageData>::new();
+        let mut set = Vec::<Self>::new();
 
         // Add each image from the objects directory to the vector
         for img in fs::read_dir(OBJECT_DIR).unwrap() {
@@ -115,7 +115,7 @@ impl ImageData {
             let weight = 1.0 / (2 * NUM_POS) as f64;
 
             // Push to vector
-            set.push(ImageData {
+            set.push(Self {
                 image,
                 weight,
                 is_object: true,
@@ -131,9 +131,9 @@ impl ImageData {
 
     /// Slices the images from the other directory and moves them to a vector
     /// of integral images
-    pub fn from_other_dir(cascade: Option<&Cascade>) -> Vec<ImageData> {
+    pub fn from_other_dir(cascade: Option<&Cascade>) -> Vec<Self> {
         // Create a vector to hold the image data
-        let mut set = Vec::<ImageData>::new();
+        let mut set = Vec::<Self>::new();
 
         // Slice each image in the slice directory and add the slice to the vector
         for img in fs::read_dir(OTHER_DIR).unwrap() {
@@ -161,16 +161,16 @@ impl ImageData {
                     let image = IntegralImage::new(&img);
 
                     // Push the image onto the vector
-                    if let Some(ref cascade) = cascade {
+                    if let Some(cascade) = cascade {
                         if cascade.classify(&image, None) {
-                            set.push(ImageData {
+                            set.push(Self {
                                 image,
                                 weight,
                                 is_object: false,
                             });
                         }
                     } else {
-                        set.push(ImageData {
+                        set.push(Self {
                             image,
                             weight,
                             is_object: false,
@@ -187,7 +187,7 @@ impl ImageData {
     }
 
     /// Normalize the weights of a set of image data
-    pub fn normalize_weights(set: &mut [ImageData]) {
+    pub fn normalize_weights(set: &mut [Self]) {
         // Sum over the weights of all the images
         let sum: f64 = set.iter().map(|d| d.weight).sum();
 

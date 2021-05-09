@@ -13,20 +13,17 @@ pub struct WeakClassifier {
     pub pos_polarity: bool,
 }
 impl WeakClassifier {
-    pub fn new(feature: Feature) -> WeakClassifier {
-        WeakClassifier {
+    pub const fn new(feature: Feature) -> Self {
+        Self {
             feature,
             threshold: 0,
             pos_polarity: false,
         }
     }
 
-    pub fn filter(
-        mut wcs: Vec<WeakClassifier>,
-        set: &mut [ImageData],
-    ) -> Vec<WeakClassifier> {
-        WeakClassifier::calculate_thresholds(&mut wcs, set);
-        wcs.sort_by_cached_key(|wc: &WeakClassifier| OrderedF64(wc.error(set)));
+    pub fn filter(mut wcs: Vec<Self>, set: &mut [ImageData]) -> Vec<Self> {
+        Self::calculate_thresholds(&mut wcs, set);
+        wcs.sort_by_cached_key(|wc: &Self| OrderedF64(wc.error(set)));
         println!("Sorted");
         wcs.reverse();
         println!("Reversed");
@@ -78,7 +75,7 @@ impl WeakClassifier {
 
     /// Calculate the optimal thresholds for a slice of weak classifiers.
     /// Calls calculate_threshold() on multiple threads
-    pub fn calculate_thresholds(wcs: &mut [WeakClassifier], set: &[ImageData]) {
+    pub fn calculate_thresholds(wcs: &mut [Self], set: &[ImageData]) {
         // Calculate the optimal thresholds for all weak classifiers
         let afs = set
             .iter()
@@ -99,8 +96,8 @@ impl WeakClassifier {
     }
 
     /// Gets all possible weak classifiers
-    pub fn get_all() -> Vec<WeakClassifier> {
-        let mut wcs = Vec::<WeakClassifier>::with_capacity(200_000);
+    pub fn get_all() -> Vec<Self> {
+        let mut wcs = Vec::<Self>::with_capacity(200_000);
         for w in 1..(WL + 1) {
             for h in 1..(WH + 1) {
                 let mut i = 0;
@@ -111,7 +108,7 @@ impl WeakClassifier {
                         if (i + 2 * w) < WL {
                             let white = (Window::new(i, j, w, h), None);
                             let black = (Window::new(i + w, j, w, h), None);
-                            let wc = WeakClassifier::new(Feature { white, black });
+                            let wc = Self::new(Feature { white, black });
                             wcs.push(wc);
                         }
 
@@ -119,7 +116,7 @@ impl WeakClassifier {
                         if (j + 2 * h) < WH {
                             let white = (Window::new(i, j, w, h), None);
                             let black = (Window::new(i, j + h, w, h), None);
-                            let wc = WeakClassifier::new(Feature { white, black });
+                            let wc = Self::new(Feature { white, black });
                             wcs.push(wc);
                         }
 
@@ -130,7 +127,7 @@ impl WeakClassifier {
                                 Some(Window::new(i + 2 * w, j, w, h)),
                             );
                             let black = (Window::new(i + w, j, w, h), None);
-                            let wc = WeakClassifier::new(Feature { white, black });
+                            let wc = Self::new(Feature { white, black });
                             wcs.push(wc);
                         }
 
@@ -141,7 +138,7 @@ impl WeakClassifier {
                                 Some(Window::new(i, j + 2 * h, w, h)),
                             );
                             let black = (Window::new(i, j + h, w, h), None);
-                            let wc = WeakClassifier::new(Feature { white, black });
+                            let wc = Self::new(Feature { white, black });
                             wcs.push(wc);
                         }
 
@@ -155,7 +152,7 @@ impl WeakClassifier {
                                 Window::new(i + w, j, w, h),
                                 Some(Window::new(i, j + h, w, h)),
                             );
-                            let wc = WeakClassifier::new(Feature { white, black });
+                            let wc = Self::new(Feature { white, black });
                             wcs.push(wc);
                         }
                         j += 1;
@@ -176,12 +173,11 @@ impl WeakClassifier {
     }
 
     // Gets the best weak classifier over a given training set
-    pub fn get_best(wcs: &[WeakClassifier], set: &[ImageData]) -> WeakClassifier {
+    pub fn get_best(wcs: &[Self], set: &[ImageData]) -> Self {
         // Find the best weak classifier
-        wcs.iter()
+        *wcs.iter()
             .min_by_key(|wc| OrderedF64(wc.error(set)))
             .expect("wcs was empty")
-            .clone()
     }
 
     // Updates the weights of the images based off of the error of the
