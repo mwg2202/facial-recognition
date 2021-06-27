@@ -1,0 +1,3 @@
+name: facial-recognition-train
+dependencies:
+    - tensorflow-gpu

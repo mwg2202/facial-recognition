@@ -1,0 +1,3 @@
+name: facial-recognition-recognize
+dependencies:
+    - tensorflow-gpu
